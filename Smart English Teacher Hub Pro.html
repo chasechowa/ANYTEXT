@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart English Teacher Hub Pro v12</title>
+    <!-- Lightweight NLP Library -->
+    <script src="https://unpkg.com/compromise"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Lora:ital,wght@0,400;0,500;1,400&family=JetBrains+Mono&display=swap');
+
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --bg-color: #f1f5f9;
+            --surface: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border: #cbd5e1;
+            --success: #059669;
+            --danger: #ef4444;
+            --ws-margin: 25.4mm; 
+            --ws-line-height: 1.6;
+            --ws-p-margin: 11pt;
+            --ws-block-margin: 15pt;
+            --ws-block-padding: 15pt;
+        }
+
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg-color); color: var(--text-main); margin: 0; padding: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden;}
+
+        /* Navigation */
+        .header { background: #1e293b; color: white; padding: 16px 24px; font-weight: 600; font-size: 1.2rem; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;}
+        .nav-bar { background-color: var(--surface); border-bottom: 1px solid var(--border); padding: 0 24px; display: flex; gap: 28px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); z-index: 10; flex-shrink: 0;}
+        .nav-tab { padding: 16px 0; font-weight: 500; color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; white-space: nowrap;}
+        .nav-tab:hover { color: var(--primary); }
+        .nav-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+        /* Layout */
+        .content-area { display: flex; gap: 24px; padding: 24px; flex-grow: 1; overflow: hidden; box-sizing: border-box; }
+        .tab-content { display: none; width: 100%; height: 100%; gap: 24px; }
+        .tab-content.active { display: flex; }
+        .panel { background-color: var(--surface); border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 24px; display: flex; flex-direction: column; border: 1px solid var(--border); overflow: hidden; }
+        .left-panel { flex: 1.2; min-width: 360px; overflow-y: auto;}
+        .right-panel { flex: 1.8; min-width: 500px; display: flex; flex-direction: column;}
+        .canvas-panel { background-color: #e2e8f0; padding: 0; border: none; box-shadow: inset 0 0 10px rgba(0,0,0,0.05); position: relative;}
+
+        h2 { font-size: 1.1rem; font-weight: 600; margin: 0 0 16px 0; color: #1e293b; display: flex; justify-content: space-between; align-items: center;}
+        
+        /* Accordion Styles */
+        .accordion { margin-bottom: 15px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--surface); }
+        .accordion-header { background: #f8fafc; padding: 12px 16px; cursor: pointer; font-weight: 600; font-size: 0.95rem; color: var(--text-main); display: flex; justify-content: space-between; align-items: center; transition: background 0.2s; }
+        .accordion-header:hover { background: #f1f5f9; }
+        .accordion-header.active { border-bottom: 1px solid var(--border); color: var(--primary); }
+        .accordion-icon { transition: transform 0.3s ease; font-size: 0.8rem; color: var(--text-muted); }
+        .accordion-header.active .accordion-icon { transform: rotate(180deg); }
+        .accordion-content { display: none; padding: 16px; background: white; }
+        .accordion-content.active { display: block; }
+
+        /* UI Elements */
+        textarea, select, input[type="text"] { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; font-family: 'Inter', sans-serif; font-size: 14px; box-sizing: border-box; margin-bottom: 12px; }
+        textarea { height: 120px; resize: none; }
+        textarea.large { height: 100%; min-height: 400px; font-family: 'JetBrains Mono', monospace; background: #f8fafc; font-size: 13px;}
+        
+        button { background-color: var(--primary); color: white; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 6px; width: 100%; margin-bottom: 10px;}
+        button.inline-btn { width: auto; margin-bottom: 0; }
+        button:hover { background-color: var(--primary-hover); }
+        .btn-success { background-color: var(--success); }
+        .btn-success:hover { background-color: #047857; }
+        .btn-outline { background-color: var(--surface); border: 1px solid var(--border); color: var(--text-main); }
+        .btn-outline:hover { background-color: #f8fafc; }
+        .btn-danger-outline { color: var(--danger); border-color: #fca5a5; background: transparent;}
+        .btn-danger-outline:hover { background: #fef2f2; }
+        .btn-small { padding: 6px 12px; font-size: 12px; }
+
+        /* Floating Dictation Button */
+        #floatingDictationBtn {
+            position: absolute; display: none; background: var(--primary); color: white; padding: 6px 12px;
+            border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            z-index: 1000; transform: translate(-50%, -130%); transition: background 0.2s; white-space: nowrap;
+        }
+        #floatingDictationBtn:hover { background: var(--primary-hover); }
+        #floatingDictationBtn::after {
+            content: ''; position: absolute; bottom: -5px; left: 50%; transform: translateX(-50%);
+            border-width: 5px 5px 0; border-style: solid; border-color: var(--primary) transparent transparent transparent;
+        }
+
+        /* Paragraph Selector Checkboxes */
+        .para-choice { padding: 8px; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 8px; font-size: 0.9rem; cursor: pointer; transition: all 0.2s; display: flex; gap: 10px; align-items: flex-start; line-height: 1.4;}
+        .para-choice:hover { background: #f8fafc; }
+        .para-choice input { width: auto; margin: 3px 0 0 0; cursor: pointer;}
+        
+        .checkbox-group { background: #f8fafc; padding: 12px; border: 1px solid var(--border); border-radius: 8px; display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px;}
+        .checkbox-group label { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; cursor: pointer;}
+        .checkbox-group input { width: 16px; height: 16px; margin: 0;}
+
+        /* Text Display & Highlighting */
+        #textDisplay { margin-top: 10px; padding: 20px; border: 1px solid var(--border); border-radius: 8px; flex-grow: 1; overflow-y: auto; font-family: 'Lora', serif; font-size: 1.1rem; line-height: 1.8; background-color: #fafafa; }
+        #textDisplay p { margin: 0 0 1.2em 0; text-indent: 1.5em; }
+        .word { cursor: pointer; transition: all 0.2s; border-radius: 3px; padding: 0 1px; }
+        .word:hover { background-color: #e0e7ff; color: var(--primary); }
+        .word.active { background-color: var(--primary); color: white; }
+
+        .hl-verb { background-color: #fee2e2 !important; color: #b91c1c !important; font-weight: 600 !important; border-bottom: 2px solid #ef4444 !important; border-radius: 2px !important;}
+        .hl-adj { background-color: #dcfce7 !important; color: #15803d !important; font-weight: 600 !important; border-bottom: 2px solid #22c55e !important; border-radius: 2px !important;}
+        .hl-trans { background-color: #fef08a !important; color: #b45309 !important; font-weight: 600 !important; border-bottom: 2px solid #eab308 !important; border-radius: 2px !important;}
+
+        /* iBT Cloze Interactive Editor Styles */
+        .ibt-word { cursor: pointer; transition: all 0.2s; border-radius: 3px; padding: 0 2px; }
+        .ibt-word:hover { background-color: #dbeafe; color: var(--primary); }
+        .ibt-clozed { background-color: #fef3c7; color: #b45309; font-weight: 600; font-family: 'JetBrains Mono', monospace; letter-spacing: 1px; border-bottom: 2px solid #f59e0b;}
+
+        /* Dictionary & Table */
+        .dict-box { border: 1px solid var(--border); padding: 20px; border-radius: 8px; margin-bottom: 20px; min-height: 120px; background-color: #f8fafc; }
+        .dict-word { font-size: 1.5rem; font-weight: 600; color: var(--primary); margin: 0; }
+        .dict-derivatives { font-size: 0.85rem; color: #0284c7; background: #e0f2fe; padding: 3px 8px; border-radius: 12px; display: inline-block; margin-top: 5px; font-weight: 500;}
+        .table-container { flex-grow: 1; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        th { background-color: #f8fafc; padding: 12px; text-align: left; position: sticky; top: 0; border-bottom: 1px solid var(--border); }
+        td { padding: 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+
+        /* Clickable Sentence Engine */
+        .clickable-sentence { transition: all 0.2s ease; border-radius: 4px; padding: 2px; }
+        .clickable-sentence:hover { background-color: #e0e7ff; cursor: pointer; box-shadow: 0 0 0 1px var(--primary); }
+
+        /* Canvas Layout */
+        .worksheet-toolbar { background: var(--surface); padding: 12px 24px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); border-radius: 12px 12px 0 0; }
+        .a4-canvas-container { padding: 30px 20px; display: flex; justify-content: center; flex-grow: 1; overflow-y: auto; }
+        
+        /* A4 Canvas styling */
+        .worksheet-preview { 
+            background-color: white; 
+            width: 210mm; 
+            min-height: 297mm; 
+            height: max-content;
+            padding: var(--ws-margin); 
+            box-sizing: border-box; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1); 
+            font-family: Arial, Helvetica, sans-serif; 
+            font-size: 11pt; color: #000; outline: none; 
+            transition: padding 0.3s ease, line-height 0.3s ease;
+            line-height: var(--ws-line-height);
+            background-image: repeating-linear-gradient(to bottom, transparent, transparent calc(297mm - 1px), rgba(148, 163, 184, 0.3) calc(297mm - 1px), rgba(148, 163, 184, 0.3) 297mm);
+        }
+        
+        /* Typography & Modules */
+        .worksheet-preview p { margin-top: 0; margin-bottom: var(--ws-p-margin); transition: margin 0.3s ease;}
+        .ws-section-title { 
+            background-color: #f3f4f6; border-radius: 8px; padding: 8px 12px; margin-top: 24px; margin-bottom: 15pt; 
+            font-size: 12pt; font-weight: bold; font-family: Arial, sans-serif; border: 1px solid #e5e7eb; display: block;
+        }
+        .ws-scramble-block { padding: var(--ws-block-padding); margin-bottom: var(--ws-block-margin); border: 1px dashed #000; position: relative; transition: all 0.3s ease; }
+        .ws-header-container { border-bottom: 3px double #000; padding-bottom: 15pt; margin-bottom: 25pt; }
+        .ws-main-title { font-size: 18pt; font-weight: bold; text-align: center; text-transform: uppercase; font-family: 'Times New Roman', Times, serif; margin: 0 0 15pt 0; letter-spacing: 1px;}
+        .ws-meta-row { display: flex; justify-content: space-between; font-size: 11pt; font-family: Arial, sans-serif; }
+        .ws-meta-field { flex: 1; }
+
+        /* Absolute Break Avoidance */
+        .avoid-break { page-break-inside: avoid !important; break-inside: avoid !important; display: block;}
+        h1, h2, h3, h4, h5, .ws-section-title { page-break-after: avoid !important; break-after: avoid !important; }
+        .force-page-break { page-break-before: always !important; break-before: page !important; position: relative; border-top: 2px dashed #cbd5e1; margin-top: 40pt; padding-top: 20pt;}
+        .force-page-break::before { content: "✂️ Page Break (Prints on a new page)"; position: absolute; top: -10pt; left: 50%; transform: translateX(-50%); background: white; padding: 0 15px; color: #94a3b8; font-size: 9pt; font-style: italic; }
+
+        /* ========================================================= */
+        /* PRINT SETTINGS - THE HOLY GRAIL FOR MULTI-PAGE WYSIWYG    */
+        /* ========================================================= */
+        @media print {
+            @page { margin: var(--ws-margin) !important; size: A4; } 
+            
+            body, html { 
+                background: white !important; height: auto !important; min-height: 0 !important;
+                overflow: visible !important; margin: 0 !important; padding: 0 !important; 
+            }
+            
+            .header, .nav-bar, .left-panel, .worksheet-toolbar, #floatingDictationBtn { display: none !important; }
+            .content-area, .right-panel, .canvas-panel, .a4-canvas-container { 
+                display: block !important; width: 100% !important; height: auto !important; 
+                overflow: visible !important; padding: 0 !important; margin: 0 !important; border: none !important;
+            }
+            
+            .tab-content { display: none !important; }
+            .tab-content.active { display: block !important; height: auto !important; overflow: visible !important; }
+            
+            .worksheet-preview { 
+                display: block !important; width: 100% !important; max-width: none !important; 
+                height: auto !important; min-height: 0 !important; margin: 0 !important;
+                padding: 0 !important; box-shadow: none !important; background-image: none !important; 
+                border: none !important; overflow: visible !important;
+            }
+            
+            .force-page-break { border-top: none !important; margin-top: 0 !important; padding-top: 0 !important; }
+            .force-page-break::before { display: none !important; }
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">🎓 Smart English Teacher Hub Pro <span style="font-size: 0.8rem; font-weight:400; background:var(--primary-hover); padding:2px 8px; border-radius:12px;">v12.0 (Dictation & Advanced Cloze)</span></div>
+
+    <!-- Navigation -->
+    <div class="nav-bar">
+        <div class="nav-tab active" onclick="switchTab('reading')">📖 Reading & NLP Profiler</div>
+        <div class="nav-tab" onclick="switchTab('worksheet')">🛠️ Worksheet Maker</div>
+        <div class="nav-tab" onclick="switchTab('para-scramble')">🧩 Paragraph Scrambler</div>
+        <div class="nav-tab" onclick="switchTab('ai-prompt')">🤖 AI Prompt Copilot</div>
+    </div>
+
+    <!-- Floating Dictation Button -->
+    <div id="floatingDictationBtn">✏️ Convert to Blanks</div>
+
+    <div class="content-area">
+        
+        <!-- Tab 1: Reading & NLP -->
+        <div id="tab-reading" class="tab-content active">
+            <div class="panel left-panel">
+                <h2>📝 Input Text</h2>
+                <textarea id="inputText" placeholder="Paste your English article here. Paragraphs will be logically preserved..."></textarea>
+                <button id="generateBtn" style="margin-bottom: 20px;">Generate Content</button>
+                
+                <div style="background: #f8fafc; padding: 15px; border: 1px solid var(--border); border-radius: 8px;">
+                    <h3 style="margin-top:0;">🧠 NLP Text Profiler</h3>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <select id="nlpMode" style="flex: 1; margin: 0;">
+                            <option value="verbs">🔴 Highlight All Verbs</option>
+                            <option value="adjectives">🟢 Highlight All Adjectives</option>
+                            <option value="transitions">🟡 Highlight Transitions</option>
+                        </select>
+                        <button id="highlightBtn" class="inline-btn btn-outline">Analyze</button>
+                    </div>
+                </div>
+                <div id="textDisplay" style="display: none;"></div>
+            </div>
+
+            <div class="panel right-panel">
+                <h2>🔍 Dictionary & Context</h2>
+                <div class="dict-box" id="dictBox"><p style="color: var(--text-muted); margin: 0;">Click any word to extract context, definition & derivatives...</p></div>
+                <button id="addBtn" style="display: none;">➕ Add to Vocabulary List</button>
+
+                <h2 style="margin-top: 20px;">📚 Vocab List (<span id="wordCount">0</span>) 
+                    <div>
+                        <button id="clearVocabBtn" class="inline-btn btn-danger-outline btn-small" style="margin-right: 5px;">🗑️ Clear</button>
+                        <button id="exportBtn" class="inline-btn btn-success btn-small">📥 CSV</button>
+                    </div>
+                </h2>
+                <div class="table-container">
+                    <table>
+                        <thead><tr><th>Word</th><th>POS</th><th>Word Family</th><th>Definition</th><th>Context</th></tr></thead>
+                        <tbody id="vocabList"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 2: Worksheet Maker (Accordions) -->
+        <div id="tab-worksheet" class="tab-content">
+            <div class="panel left-panel" style="padding-right: 15px;">
+                <h2 style="margin-bottom: 20px;">🛠️ Module Builder</h2>
+                
+                <!-- Accordion 1: Standard Cloze -->
+                <div class="accordion">
+                    <div class="accordion-header active">
+                        <span>📝 1. Standard Vocab Cloze</span>
+                        <span class="accordion-icon">▼</span>
+                    </div>
+                    <div class="accordion-content active">
+                        <p style="font-size: 0.85rem; color: var(--text-muted); margin-top:0;">Generates full blanks based on your Vocab List.</p>
+                        <button id="makeClozeBtn" class="btn-outline" style="margin-bottom:0;">✏️ Insert Vocab Cloze</button>
+                    </div>
+                </div>
+
+                <!-- Accordion 2: iBT Cloze Maker -->
+                <div class="accordion">
+                    <div class="accordion-header">
+                        <span>🎯 2. iBT Partial Cloze Maker</span>
+                        <span class="accordion-icon">▼</span>
+                    </div>
+                    <div class="accordion-content">
+                        <div id="ibtStep1">
+                            <p style="font-size: 0.85rem; font-weight: 600; margin-top:0; color:var(--primary);">Step 1: Select Paragraphs</p>
+                            <div id="ibtParaSelector" style="max-height: 180px; overflow-y: auto; margin-bottom: 10px;">
+                                <p style="font-size: 0.85rem; color: var(--text-muted); font-style: italic;">Generate text in Reading tab first.</p>
+                            </div>
+                            <button id="ibtConfirmBtn" class="btn-outline" style="margin-bottom:0;">Continue to Editing ➔</button>
+                        </div>
+                        <div id="ibtStep2" style="display:none;">
+                            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px;">
+                                <p style="font-size: 0.85rem; font-weight: 600; margin:0; color:var(--success);">Step 2: Click to Create Blanks</p>
+                                <button id="ibtBackBtn" class="inline-btn btn-small btn-outline" style="border:none; color:var(--text-muted);">↺ Reselect</button>
+                            </div>
+                            <div id="ibtClozeEditor" style="height: 220px; overflow-y: auto; background: #f8fafc; padding: 15px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.95rem; line-height: 1.6; margin-bottom: 10px; font-family: 'Lora', serif;">
+                            </div>
+                            <button id="insertIbtClozeBtn" class="btn-success" style="margin-bottom:0;">➕ Insert iBT Cloze to Canvas</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Accordion 3: Sentence Scramble -->
+                <div class="accordion">
+                    <div class="accordion-header">
+                        <span>🔀 3. Syntax Scramble Pool</span>
+                        <span class="accordion-icon">▼</span>
+                    </div>
+                    <div class="accordion-content">
+                        <p style="font-size: 0.8rem; color: var(--success); margin-top:0; font-weight: 500;">
+                            ✨ Click sentences below to add them to the grammar scramble pool!
+                        </p>
+                        <div id="sourceTextForScramble" style="height: 140px; overflow-y: auto; background: #f8fafc; padding: 15px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.95rem; line-height: 1.6; margin-bottom: 10px; font-family: 'Lora', serif;">
+                            <span style="color: #94a3b8; font-style: italic;">Article text will appear here...</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                            <span style="font-size: 0.85rem; font-weight: 600;">Current Pool:</span>
+                            <button id="clearPoolBtn" class="inline-btn btn-danger-outline btn-small" style="border:none; background:transparent;">Clear Pool</button>
+                        </div>
+                        <ul id="sentencePoolList" style="margin: 5px 0 15px 0; padding-left: 20px; font-size: 0.85rem; color: var(--primary); max-height: 100px; overflow-y: auto; border-left: 2px solid var(--border);">
+                            <li style="list-style: none; font-style: italic; margin-left: -20px; color: var(--text-muted);">Pool is empty...</li>
+                        </ul>
+                        <button id="insertScrambledSentencesBtn" class="btn-success" style="margin-bottom:0;">➕ Insert Sentences to Canvas</button>
+                    </div>
+                </div>
+
+                <!-- Accordion 4: Dictation Maker -->
+                <div class="accordion">
+                    <div class="accordion-header">
+                        <span>🎧 4. Dictation Maker</span>
+                        <span class="accordion-icon">▼</span>
+                    </div>
+                    <div class="accordion-content">
+                        <p style="font-size: 0.8rem; color: var(--success); margin-top:0; font-weight: 500;">
+                            ✨ Highlight any text inside the box below to instantly convert it into listening blanks!
+                        </p>
+                        <div id="dictationEditor" style="height: 180px; overflow-y: auto; background: #f8fafc; padding: 15px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.95rem; line-height: 1.6; margin-bottom: 10px; font-family: 'Lora', serif;">
+                            <span style="color: #94a3b8; font-style: italic;">Article text will appear here...</span>
+                        </div>
+                        <div style="display: flex; gap: 10px;">
+                            <button id="resetDictationBtn" class="btn-outline inline-btn" style="flex: 1;">↺ Reset</button>
+                            <button id="insertDictationBtn" class="btn-success inline-btn" style="flex: 2;">➕ Insert Dictation</button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="panel right-panel canvas-panel">
+                <div class="worksheet-toolbar">
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <div style="display: flex; align-items: center; gap: 5px;">
+                            <span style="font-size: 0.85rem; font-weight: 500;">Margins:</span>
+                            <select id="marginSelect" style="margin: 0; padding: 4px 8px; width: 100px; font-size: 0.85rem;">
+                                <option value="12.7mm">Narrow</option>
+                                <option value="25.4mm" selected>Normal</option>
+                                <option value="38.1mm">Wide</option>
+                            </select>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 5px;">
+                            <span style="font-size: 0.85rem; font-weight: 500;">Spacing:</span>
+                            <select id="spacingSelect" style="margin: 0; padding: 4px 8px; width: 100px; font-size: 0.85rem;">
+                                <option value="standard" selected>Standard</option>
+                                <option value="compact">Compact</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <button id="clearCanvasBtn" class="inline-btn btn-danger-outline">🗑️ Clear</button>
+                        <button id="printBtn" class="inline-btn btn-success">🖨️ Print PDF</button>
+                    </div>
+                </div>
+                <div class="a4-canvas-container">
+                    <div class="worksheet-preview" id="worksheetPreview" contenteditable="true" spellcheck="false">
+                        <div class="ws-header-container" id="defaultHeader">
+                            <h1 class="ws-main-title">English Reading & Comprehension</h1>
+                            <div class="ws-meta-row">
+                                <div class="ws-meta-field"><strong>Name:</strong> ________________________</div>
+                                <div class="ws-meta-field ws-meta-center"><strong>Class:</strong> ________________________</div>
+                                <div class="ws-meta-field ws-meta-right"><strong>Date:</strong> ________________________</div>
+                            </div>
+                        </div>
+                        <p style="color: #94a3b8; font-style: italic; text-align: center; margin-top: 40px;" id="wsPlaceholder">( 👆 The canvas is an infinite scrolling white paper. Use left tools to insert exercises here. )</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: Independent Paragraph Scrambler -->
+        <div id="tab-para-scramble" class="tab-content">
+            <div class="panel left-panel">
+                <h2>🧩 Paragraph Scrambler</h2>
+                <p style="font-size: 0.9rem; color: var(--text-muted); margin-top:-5px; margin-bottom: 20px;">
+                    This section generates a standalone, cut-and-paste activity sheet. It prints on its own clean pages.
+                </p>
+                <button id="generateParaScrambleBtn" class="btn-success" style="padding: 15px; font-size: 15px;">🔀 Generate Scrambled Worksheet</button>
+            </div>
+            
+            <div class="panel right-panel canvas-panel">
+                <div class="worksheet-toolbar">
+                    <span style="font-size: 0.85rem; font-weight: 500; color:var(--text-muted);">Standalone Document</span>
+                    <button id="printParaBtn" class="inline-btn btn-success">🖨️ Print Scramble PDF</button>
+                </div>
+                <div class="a4-canvas-container">
+                    <div class="worksheet-preview" id="paraCanvasPreview" contenteditable="true" spellcheck="false">
+                        <p style="color: #94a3b8; font-style: italic; text-align: center; margin-top: 40px;" id="paraPlaceholder">Click 'Generate Scrambled Worksheet' on the left to create the document.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 4: AI Prompt Copilot -->
+        <div id="tab-ai-prompt" class="tab-content">
+            <div class="panel left-panel">
+                <h2>🤖 Prompt Generator</h2>
+                <label style="font-weight: 600; font-size: 0.9rem; margin-top: 10px; display: block;">1. Target Exam Standard:</label>
+                <select id="examStandard">
+                    <option value="SAT">SAT / PSAT (Evidence-Based Reading)</option>
+                    <option value="TOEFL">TOEFL iBT</option>
+                    <option value="IELTS">IELTS Academic</option>
+                </select>
+
+                <label style="font-weight: 600; font-size: 0.9rem; margin-top: 15px; display: block;">2. Question Types (Check multiple):</label>
+                <div class="checkbox-group" id="questionTypesGroup">
+                    <label><input type="checkbox" value="MCQ" checked> Multiple Choice (Main Idea & Inference)</label>
+                    <label><input type="checkbox" value="IELTS_Summary"> IELTS Summary Completion</label>
+                    <label><input type="checkbox" value="TOEFL_Rewrite"> TOEFL Sentence Simplification</label>
+                    <label><input type="checkbox" value="Vocab_Context"> Vocabulary in Context</label>
+                </div>
+
+                <label style="font-weight: 600; font-size: 0.9rem; margin-top: 10px; display: block;">3. Questions per type:</label>
+                <select id="questionCount">
+                    <option value="3">3 Questions</option>
+                    <option value="5" selected>5 Questions</option>
+                    <option value="10">10 Questions</option> 
+                </select>
+
+                <button id="generatePromptBtn" style="margin-top: 20px; padding: 12px; font-size: 15px;">✨ Generate Master Prompt</button>
+            </div>
+
+            <div class="panel right-panel">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <h2 style="margin:0;">📋 Generated AI Prompt</h2>
+                    <button id="copyPromptBtn" class="inline-btn btn-success btn-small">📄 Copy to Clipboard</button>
+                </div>
+                <textarea id="promptOutput" class="large" placeholder="Your engineered prompt will appear here..."></textarea>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dynamic Stylesheet for Screen Preview Margins -->
+    <style id="print-margin-style"></style>
+
+    <script>
+        // Set Default Print Margin dynamically on load to match Select
+        document.getElementById('print-margin-style').innerHTML = `@media print { @page { margin: 25.4mm !important; } }`;
+
+        // --- Core Data & State ---
+        let globalRawParagraphs = []; 
+        let vocabularyList = []; 
+        let isHighlighted = false;
+        let sentencePool = []; 
+        let sectionCounter = 0; 
+        
+        const transitionWordsExtra = ["however", "therefore", "furthermore", "moreover", "consequently", "nevertheless", "meanwhile", "although", "additionally", "instead", "otherwise", "subsequently", "thus", "hence", "firstly", "secondly", "finally", "also", "besides", "nonetheless", "conversely"];
+        const romanNumerals = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
+
+        // Accordion Logic
+        document.querySelectorAll('.accordion-header').forEach(header => {
+            header.addEventListener('click', () => {
+                document.querySelectorAll('.accordion-header').forEach(other => {
+                    if (other !== header) {
+                        other.classList.remove('active');
+                        other.nextElementSibling.classList.remove('active');
+                    }
+                });
+                header.classList.toggle('active');
+                header.nextElementSibling.classList.toggle('active');
+            });
+        });
+
+        // Navigation
+        function switchTab(tabId) {
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById(`tab-${tabId}`).classList.add('active');
+        }
+
+        // --- UPDATED: Advanced iBT Cloze Random Truncation Logic ---
+        function truncateWord(word) {
+            let L = word.length;
+            if (L <= 1) return '_'; // Fallback for 1-letter words
+            
+            let minMask, maxMask;
+            
+            // For words 4 letters or less: mask 1 to 3 letters
+            if (L <= 4) {
+                minMask = 1;
+                // Ensures we don't mask the whole word (L-1 is max)
+                maxMask = Math.min(3, L - 1); 
+            } else {
+                // For words > 4 letters: mask 4 to 6 letters
+                minMask = Math.min(4, L - 1); 
+                maxMask = Math.min(6, L - 1); 
+            }
+            
+            let maskCount = Math.floor(Math.random() * (maxMask - minMask + 1)) + minMask;
+            let keep = L - maskCount; 
+            return word.substring(0, keep) + '_'.repeat(maskCount);
+        }
+
+        // --- 1. Master Generator ---
+        document.getElementById('generateBtn').addEventListener('click', () => {
+            const rawText = document.getElementById('inputText').value.trim();
+            if (!rawText) return;
+
+            const textDisplay = document.getElementById('textDisplay');
+            const sourceTextForScramble = document.getElementById('sourceTextForScramble');
+            const ibtParaSelector = document.getElementById('ibtParaSelector');
+            const dictationEditor = document.getElementById('dictationEditor');
+            
+            textDisplay.innerHTML = ''; 
+            sourceTextForScramble.innerHTML = ''; 
+            ibtParaSelector.innerHTML = '';
+            dictationEditor.innerHTML = '';
+            
+            globalRawParagraphs = rawText.split(/\n+/).filter(p => p.trim().length > 0);
+            
+            globalRawParagraphs.forEach((paraText, pIdx) => {
+                
+                // --- Tab 1: Interactive Text ---
+                const p1 = document.createElement('p');
+                const parts = paraText.split(/([a-zA-Z]+)/); 
+                parts.forEach(part => {
+                    if (/^[a-zA-Z]+$/.test(part)) {
+                        const span = document.createElement('span');
+                        span.textContent = part;
+                        span.className = 'word';
+                        span.onclick = () => processWordClick(part, span);
+                        p1.appendChild(span);
+                    } else {
+                        p1.appendChild(document.createTextNode(part));
+                    }
+                });
+                textDisplay.appendChild(p1);
+
+                // --- Tab 2: iBT Paragraph Checkbox ---
+                const chkDiv = document.createElement('label');
+                chkDiv.className = 'para-choice';
+                chkDiv.innerHTML = `<input type="checkbox" value="${pIdx}"> <span>${paraText.substring(0, 100)}...</span>`;
+                ibtParaSelector.appendChild(chkDiv);
+
+                // --- Tab 2: Sentence Scramble Clicker Setup ---
+                const p2 = document.createElement('p');
+                p2.style.marginBottom = '10px';
+                let sentences = window.nlp ? nlp(paraText).sentences().out('array') : paraText.match(/[^.?!]+[.?!]+[\])'"`’”]*|.+/g) || [paraText];
+                sentences.forEach(sent => {
+                    const sSpan = document.createElement('span');
+                    sSpan.className = 'clickable-sentence';
+                    sSpan.textContent = sent.trim() + ' ';
+                    sSpan.onclick = function() {
+                        sentencePool.push(sent.trim());
+                        renderSentencePool();
+                        this.style.backgroundColor = '#dcfce7'; this.style.color = '#15803d';
+                        setTimeout(() => { this.style.backgroundColor = ''; this.style.color = ''; }, 400);
+                    };
+                    p2.appendChild(sSpan);
+                });
+                sourceTextForScramble.appendChild(p2);
+
+                // --- Tab 2: Dictation Editor Setup ---
+                const p3 = document.createElement('p');
+                p3.style.marginBottom = '10px';
+                p3.textContent = paraText;
+                dictationEditor.appendChild(p3);
+            });
+            
+            textDisplay.style.display = 'block';
+            isHighlighted = false;
+            document.getElementById('highlightBtn').innerHTML = "Analyze";
+            
+            // Reset iBT UI State
+            document.getElementById('ibtStep1').style.display = 'block';
+            document.getElementById('ibtStep2').style.display = 'none';
+        });
+
+        // --- Dictation Editor Logic (Highlight to Mask) ---
+        const dictationEditor = document.getElementById('dictationEditor');
+        const floatingDictationBtn = document.getElementById('floatingDictationBtn');
+
+        // Prevent selection clearing when clicking the floating button
+        floatingDictationBtn.onmousedown = (e) => {
+            e.preventDefault(); 
+        };
+
+        dictationEditor.addEventListener('mouseup', (e) => {
+            const selection = window.getSelection();
+            const text = selection.toString().trim();
+            if (text.length > 0) {
+                floatingDictationBtn.style.display = 'block';
+                floatingDictationBtn.style.left = e.pageX + 'px';
+                floatingDictationBtn.style.top = (e.pageY - 15) + 'px';
+                
+                floatingDictationBtn.onclick = () => {
+                    const activeSelection = window.getSelection();
+                    if (activeSelection.rangeCount > 0) {
+                        const range = activeSelection.getRangeAt(0);
+                        const selectedText = range.toString();
+                        
+                        // Replace each letter-based word with a standard blank
+                        const blankedText = selectedText.replace(/[a-zA-Z0-9]+/g, '________');
+                        
+                        const span = document.createElement('span');
+                        span.style.color = '#b45309';
+                        span.style.fontWeight = 'bold';
+                        span.style.backgroundColor = '#fef3c7';
+                        span.style.padding = '0 2px';
+                        span.style.borderRadius = '3px';
+                        span.textContent = blankedText;
+                        
+                        range.deleteContents();
+                        range.insertNode(span);
+                    }
+                    floatingDictationBtn.style.display = 'none';
+                    window.getSelection().removeAllRanges();
+                };
+            } else {
+                floatingDictationBtn.style.display = 'none';
+            }
+        });
+
+        document.addEventListener('mousedown', (e) => {
+            if (e.target !== floatingDictationBtn && !dictationEditor.contains(e.target)) {
+                floatingDictationBtn.style.display = 'none';
+            }
+        });
+
+        document.getElementById('resetDictationBtn').addEventListener('click', () => {
+            dictationEditor.innerHTML = '';
+            globalRawParagraphs.forEach(para => {
+                const p = document.createElement('p');
+                p.style.marginBottom = '10px';
+                p.textContent = para;
+                dictationEditor.appendChild(p);
+            });
+        });
+
+        document.getElementById('insertDictationBtn').addEventListener('click', () => {
+            if (!dictationEditor.innerHTML || dictationEditor.textContent.includes('Article text will appear here')) {
+                return alert("Please generate text first.");
+            }
+            removePlaceholder();
+            let html = `
+                <div id="section-dictation" class="avoid-break" style="margin-bottom: var(--ws-block-margin);">
+                    <h2 class="ws-section-title">${getNextSectionTitle("Listening Dictation", "🎧")}</h2>
+                    <p style="font-style:italic; color:#333; margin-bottom:15pt;">Instructions: Listen to the audio recording and fill in the missing words accurately.</p>
+                    <div style="line-height: 2.2; text-align: justify; padding: var(--ws-block-padding); border: 1px solid #cbd5e1; border-radius: 8px;">
+                        ${dictationEditor.innerHTML}
+                    </div>
+                </div>`;
+            document.getElementById('worksheetPreview').innerHTML += html;
+        });
+
+        // --- iBT Cloze Editor Logic ---
+        let currentIbtTokens = []; // Structure: [paraIndex][tokenIndex]
+
+        document.getElementById('ibtConfirmBtn').addEventListener('click', () => {
+            const checkboxes = document.querySelectorAll('#ibtParaSelector input:checked');
+            if(checkboxes.length === 0) return alert("Please select at least one paragraph!");
+            
+            currentIbtTokens = [];
+            const editor = document.getElementById('ibtClozeEditor');
+            editor.innerHTML = '';
+
+            checkboxes.forEach(cb => {
+                const pIdx = parseInt(cb.value);
+                const paraText = globalRawParagraphs[pIdx];
+                const parts = paraText.split(/([a-zA-Z]+)/); 
+                let paraTokens = [];
+
+                const pElem = document.createElement('p');
+                pElem.style.marginBottom = '15px';
+
+                parts.forEach(part => {
+                    if (/^[a-zA-Z]+$/.test(part)) {
+                        let token = { text: part, isCloze: false, maskedText: '' };
+                        paraTokens.push(token);
+                        
+                        const span = document.createElement('span');
+                        span.className = 'ibt-word';
+                        span.textContent = part;
+                        
+                        span.onclick = () => {
+                            token.isCloze = !token.isCloze;
+                            if (token.isCloze) {
+                                token.maskedText = truncateWord(token.text); // Generate mask dynamically
+                            }
+                            span.className = 'ibt-word ' + (token.isCloze ? 'ibt-clozed' : '');
+                            span.textContent = token.isCloze ? token.maskedText : token.text;
+                        };
+                        pElem.appendChild(span);
+                    } else {
+                        if(part.length > 0) {
+                            paraTokens.push({ text: part, type: 'punct' });
+                            pElem.appendChild(document.createTextNode(part));
+                        }
+                    }
+                });
+                currentIbtTokens.push(paraTokens);
+                editor.appendChild(pElem);
+            });
+
+            document.getElementById('ibtStep1').style.display = 'none';
+            document.getElementById('ibtStep2').style.display = 'block';
+        });
+
+        document.getElementById('ibtBackBtn').addEventListener('click', () => {
+            document.getElementById('ibtStep2').style.display = 'none';
+            document.getElementById('ibtStep1').style.display = 'block';
+        });
+
+        document.getElementById('insertIbtClozeBtn').addEventListener('click', () => {
+            let hasSelection = currentIbtTokens.some(para => para.some(t => t.isCloze));
+            if (!hasSelection) return alert("Please click on some words to create partial blanks before inserting!");
+
+            removePlaceholder();
+            let html = `
+                <div class="avoid-break" style="margin-bottom: var(--ws-block-margin);">
+                    <h2 class="ws-section-title">${getNextSectionTitle("iBT Partial Cloze (C-Test)", "🎯")}</h2>
+                    <p style="font-style:italic; color:#333; margin-bottom: 10pt;">Instructions: Use context clues to complete the partially omitted words below.</p>
+                    <div style="line-height: var(--ws-line-height); text-align: justify; padding: var(--ws-block-padding); border: 1px solid #cbd5e1; border-radius: 8px;">`;
+            
+            currentIbtTokens.forEach(para => {
+                html += `<p style="margin-bottom: var(--ws-p-margin);">`;
+                para.forEach(token => {
+                    if (token.isCloze) {
+                        html += `<strong style="font-family: 'JetBrains Mono', monospace; font-size: 11pt; letter-spacing: 1px; border-bottom: 1.5px solid #000;">${token.maskedText}</strong>`;
+                    } else {
+                        html += token.text;
+                    }
+                });
+                html += `</p>`;
+            });
+            html += `</div></div>`;
+            document.getElementById('worksheetPreview').innerHTML += html;
+        });
+
+
+        // NLP Highlighter
+        document.getElementById('highlightBtn').addEventListener('click', () => {
+            if (globalRawParagraphs.length === 0) return alert("Please generate text first!");
+            if (!window.nlp) return alert("NLP library is still loading...");
+            const spans = document.querySelectorAll('#textDisplay .word');
+            const mode = document.getElementById('nlpMode').value;
+            const btn = document.getElementById('highlightBtn');
+            
+            if (!isHighlighted) {
+                let doc = nlp(globalRawParagraphs.join('\n'));
+                let targetWords = [];
+                let highlightClass = "";
+
+                if (mode === 'verbs') { targetWords = doc.verbs().out('array'); highlightClass = "hl-verb"; } 
+                else if (mode === 'adjectives') { targetWords = doc.adjectives().out('array'); highlightClass = "hl-adj"; } 
+                else if (mode === 'transitions') {
+                    let nlpConj = doc.conjunctions().out('array');
+                    targetWords = [...new Set([...nlpConj, ...transitionWordsExtra])];
+                    highlightClass = "hl-trans";
+                }
+
+                let targetSet = new Set(targetWords.map(w => w.toLowerCase().replace(/[^a-z]/g, '')));
+
+                spans.forEach(span => {
+                    if (targetSet.has(span.textContent.toLowerCase())) {
+                        span.classList.add(highlightClass); span.dataset.hlType = highlightClass; 
+                    }
+                });
+                isHighlighted = true; btn.innerHTML = "🧹 Clear";
+            } else {
+                spans.forEach(span => {
+                    if (span.dataset.hlType) { span.classList.remove(span.dataset.hlType); delete span.dataset.hlType; }
+                });
+                isHighlighted = false; btn.innerHTML = "Analyze";
+            }
+        });
+
+        // Dictionary
+        async function processWordClick(word, spanElement) {
+            document.querySelectorAll('.word').forEach(el => { if(!el.dataset.hlType) el.classList.remove('active'); });
+            spanElement.classList.add('active');
+
+            const cleanWord = word.toLowerCase();
+            const dictBox = document.getElementById('dictBox');
+            const addBtn = document.getElementById('addBtn');
+            addBtn.style.display = 'none'; 
+            dictBox.innerHTML = `<p>Searching <b>${cleanWord}</b>...</p>`;
+            
+            const regex = new RegExp(`[^.?!\\n]*\\b${cleanWord.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')}\\b[^.?!\\n]*[.?!]`, 'i');
+            const match = globalRawParagraphs.join(' ').match(regex);
+            const contextExample = match ? match[0].trim().replace(/^["'\s]+|["'\s]+$/g, '') : "";
+
+            let derivativesText = "";
+            if (window.nlp) {
+                let doc = window.nlp(cleanWord);
+                let forms = new Set();
+                if (doc.has('#Verb')) {
+                    let conj = doc.verbs().conjugate()[0];
+                    if (conj) {
+                        if (conj.PastTense && conj.PastTense !== cleanWord) forms.add(conj.PastTense);
+                        if (conj.Gerund && conj.Gerund !== cleanWord) forms.add(conj.Gerund);
+                    }
+                }
+                if (doc.has('#Noun')) {
+                    let plur = doc.nouns().toPlural().out('array')[0];
+                    if (plur && plur !== cleanWord) forms.add(plur);
+                }
+                if (doc.has('#Adjective')) {
+                    let adv = doc.adjectives().conjugate()[0];
+                    if (adv && adv.Adverb && adv.Adverb !== cleanWord) forms.add(adv.Adverb);
+                }
+                let arr = Array.from(forms).slice(0, 2); 
+                if (arr.length > 0) derivativesText = arr.join(', ');
+            }
+
+            try {
+                const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${cleanWord}`);
+                if (!response.ok) throw new Error("Not found");
+                const data = await response.json();
+                const pos = data[0].meanings[0].partOfSpeech || "";
+                const def = data[0].meanings[0].definitions[0].definition || "";
+
+                // Prioritize API example if available, fallback to context text
+                let apiExample = "";
+                for (let meaning of data[0].meanings) {
+                    for (let definition of meaning.definitions) {
+                        if (definition.example) {
+                            apiExample = definition.example;
+                            break;
+                        }
+                    }
+                    if (apiExample) break;
+                }
+                const finalExample = apiExample ? apiExample : contextExample;
+
+                window.currentWordData = { word: cleanWord, pos: pos, def: def, example: finalExample, derivatives: derivativesText };
+                
+                let dictHtml = `<div class="dict-word">${cleanWord}</div>
+                                <div style="font-size:0.8rem; background:#e2e8f0; display:inline-block; padding:2px 6px; border-radius:4px; margin:5px 0;">${pos}</div>`;
+                if (derivativesText) { dictHtml += `<div class="dict-derivatives">Family: ${derivativesText}</div>`; }
+                dictHtml += `<p style="margin:5px 0 10px 0; font-size:0.95rem;">${def}</p>
+                             <div style="font-size:0.9rem; color:#047857; background:#ecfdf5; padding:8px; border-left:3px solid #34d399;">
+                                <b>${apiExample ? 'API Dictionary Example' : 'In Context'}:</b> "${finalExample}"
+                             </div>`;
+                
+                dictBox.innerHTML = dictHtml; addBtn.style.display = 'block';
+            } catch (err) {
+                window.currentWordData = { word: cleanWord, pos: "", def: "Definition not found.", example: contextExample, derivatives: derivativesText };
+                dictBox.innerHTML = `<div class="dict-word">${cleanWord}</div>
+                                     ${derivativesText ? `<div class="dict-derivatives">Family: ${derivativesText}</div>` : ''}
+                                     <p style="color:red; margin-top:5px;">Dictionary lookup failed.</p>`;
+                addBtn.style.display = 'block';
+            }
+        }
+
+        function renderVocabTable() {
+            const tbody = document.getElementById('vocabList');
+            tbody.innerHTML = '';
+            vocabularyList.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td style="font-weight:bold; color:var(--primary);">${item.word}</td>
+                                <td>${item.pos}</td>
+                                <td><span style="font-size:0.85rem; color:#0284c7; background:#e0f2fe; padding:2px 6px; border-radius:4px;">${item.derivatives || '-'}</span></td>
+                                <td>${item.def}</td>
+                                <td style="font-size:0.85rem; color:#64748b;">${item.example}</td>`;
+                tbody.appendChild(tr);
+            });
+            document.getElementById('wordCount').textContent = vocabularyList.length;
+        }
+
+        document.getElementById('addBtn').addEventListener('click', () => {
+            if (vocabularyList.some(item => item.word === window.currentWordData.word)) return alert("Already in list!");
+            vocabularyList.push(window.currentWordData);
+            renderVocabTable();
+            const btn = document.getElementById('addBtn');
+            btn.innerHTML = "✅ Added"; setTimeout(() => btn.innerHTML = "➕ Add to Vocabulary List", 1000);
+        });
+
+        document.getElementById('clearVocabBtn').addEventListener('click', () => {
+            if (confirm("Are you sure you want to clear your vocabulary list?")) { vocabularyList = []; renderVocabTable(); }
+        });
+
+        document.getElementById('exportBtn').addEventListener('click', () => {
+            if (vocabularyList.length === 0) return alert("Your vocabulary list is empty!");
+            let csv = "\uFEFFWord,Part of Speech,Word Family,Definition,Example\n";
+            vocabularyList.forEach(item => {
+                const escape = (str) => str ? str.replace(/"/g, '""') : "";
+                csv += `"${escape(item.word)}","${escape(item.pos)}","${escape(item.derivatives)}","${escape(item.def)}","${escape(item.example)}"\n`;
+            });
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'Vocabulary_List_Pro.csv'; link.style.display = 'none';
+            document.body.appendChild(link); link.click(); document.body.removeChild(link);
+        });
+
+        // ==========================================
+        // WORKSHEET MAKER LOGIC
+        // ==========================================
+        
+        document.getElementById('spacingSelect').addEventListener('change', (e) => {
+            const root = document.documentElement;
+            if (e.target.value === 'compact') {
+                root.style.setProperty('--ws-line-height', '1.3'); root.style.setProperty('--ws-p-margin', '6pt');
+                root.style.setProperty('--ws-block-margin', '8pt'); root.style.setProperty('--ws-block-padding', '10pt');
+            } else {
+                root.style.setProperty('--ws-line-height', '1.6'); root.style.setProperty('--ws-p-margin', '11pt');
+                root.style.setProperty('--ws-block-margin', '15pt'); root.style.setProperty('--ws-block-padding', '15pt');
+            }
+        });
+
+        // Inject dynamic margin for Printing engine
+        document.getElementById('marginSelect').addEventListener('change', (e) => {
+            document.documentElement.style.setProperty('--ws-margin', e.target.value);
+            document.getElementById('print-margin-style').innerHTML = `@media print { @page { margin: ${e.target.value} !important; } }`;
+        });
+
+        function removePlaceholder() {
+            const placeholder = document.getElementById('wsPlaceholder');
+            if (placeholder) placeholder.remove(); 
+        }
+
+        function getNextSectionTitle(titleStr, emoji) {
+            sectionCounter++;
+            return `Part ${romanNumerals[sectionCounter]}: ${emoji} ${titleStr}`;
+        }
+
+        let clearClickCount = 0;
+        document.getElementById('clearCanvasBtn').addEventListener('click', () => {
+            const btn = document.getElementById('clearCanvasBtn');
+            if (clearClickCount === 0) {
+                btn.innerHTML = "⚠️ Confirm?"; btn.style.backgroundColor = "#fee2e2"; clearClickCount++;
+                setTimeout(() => { btn.innerHTML = "🗑️ Clear"; btn.style.backgroundColor = "transparent"; clearClickCount = 0; }, 3000);
+            } else {
+                document.getElementById('worksheetPreview').innerHTML = `
+                    <div class="ws-header-container" id="defaultHeader">
+                        <h1 class="ws-main-title">English Reading & Comprehension</h1>
+                        <div class="ws-meta-row">
+                            <div class="ws-meta-field"><strong>Name:</strong> ________________________</div>
+                            <div class="ws-meta-field ws-meta-center"><strong>Class:</strong> ________________________</div>
+                            <div class="ws-meta-field ws-meta-right"><strong>Date:</strong> ________________________</div>
+                        </div>
+                    </div>
+                    <p style="color: #94a3b8; font-style: italic; text-align: center; margin-top: 40px;" id="wsPlaceholder">( 👆 The canvas is an infinite scrolling white paper. Use left tools to insert exercises here. )</p>`;
+                btn.innerHTML = "🗑️ Clear"; btn.style.backgroundColor = "transparent"; clearClickCount = 0;
+                sectionCounter = 0; 
+            }
+        });
+
+        // 1. Insert Standard Cloze 
+        document.getElementById('makeClozeBtn').addEventListener('click', () => {
+            if (globalRawParagraphs.length === 0) return alert("Please generate text first.");
+            if (vocabularyList.length === 0) return alert("Vocabulary list is empty!");
+
+            removePlaceholder();
+            let clozeText = globalRawParagraphs.join('\n\n');
+            let targetWords = vocabularyList.map(item => item.word);
+            let shuffledWords = [...targetWords].sort(() => 0.5 - Math.random());
+            
+            targetWords.forEach(word => { clozeText = clozeText.replace(new RegExp(`\\b${word}\\b`, 'gi'), '<strong>__________</strong>'); });
+            const formattedCloze = clozeText.split(/\n+/).map(p => `<p>${p}</p>`).join('');
+
+            document.getElementById('worksheetPreview').innerHTML += `
+                <div id="section-cloze" class="avoid-break" style="margin-bottom: var(--ws-block-margin);">
+                    <h2 class="ws-section-title">${getNextSectionTitle("Vocabulary Fill-in-the-Blanks", "📝")}</h2>
+                    <div style="border: 1.5px solid #000; padding: var(--ws-block-padding); margin-bottom: var(--ws-block-margin); text-align: center; border-radius: 4px;">
+                        <div style="font-weight: bold; margin-bottom: 5pt; letter-spacing: 1px;">WORD BANK</div>
+                        ${shuffledWords.map(w => `<span style="display:inline-block; margin: 5pt 15pt; font-weight:bold; font-size:12pt;">${w}</span>`).join('')}
+                    </div>
+                    <div>${formattedCloze}</div>
+                </div>
+            `;
+        });
+
+        // 3. Sentence Scramble - FULLY ORDERED WITH PROPER LISTS
+        function renderSentencePool() {
+            const list = document.getElementById('sentencePoolList');
+            if (sentencePool.length === 0) {
+                list.innerHTML = `<li style="list-style: none; font-style: italic; margin-left: -20px; color: var(--text-muted);">Pool is empty...</li>`; return;
+            }
+            list.innerHTML = sentencePool.map((s) => `<li>${s.substring(0, 45)}...</li>`).join('');
+        }
+        document.getElementById('clearPoolBtn').addEventListener('click', () => { sentencePool = []; renderSentencePool(); });
+
+        document.getElementById('insertScrambledSentencesBtn').addEventListener('click', () => {
+            if (sentencePool.length === 0) return alert("Sentence pool is empty! Click sentences in the text box above to add them.");
+            removePlaceholder();
+            
+            let listItemsHtml = '';
+            sentencePool.forEach(sentence => {
+                let clean = sentence.replace(/[.?!]+$/, '');
+                let words = clean.split(/\s+/).sort(() => 0.5 - Math.random());
+                // FIX: Force list-item display to override Tailwind resets
+                listItemsHtml += `<li class="avoid-break" style="display: list-item; margin-bottom: var(--ws-block-margin); font-size: 10pt; font-weight: bold; line-height: 1.8; padding-left: 10pt;">`;
+                listItemsHtml += words.join(' <span style="color:#94a3b8; margin: 0 5px; font-weight:normal;">/</span> ');
+                listItemsHtml += `<div style="border-bottom:1px solid #000; height: 20pt; width: 100%; margin-top: 5pt;"></div>`;
+                listItemsHtml += `<div style="border-bottom:1px solid #000; height: 20pt; width: 100%; margin-top: 5pt;"></div></li>`;
+            });
+
+            const existingList = document.getElementById('dynamic-sentence-list');
+            if (existingList) {
+                existingList.innerHTML += listItemsHtml;
+            } else {
+                let html = `
+                    <div id="section-sentence-scramble" style="margin-bottom: var(--ws-block-margin);">
+                        <h2 class="ws-section-title">${getNextSectionTitle("Sentence Syntax Unscramble", "🔀")}</h2>
+                        <p style="font-style:italic; color:#333; margin-bottom:15pt;">Instructions: Unscramble the words below to form grammatically correct sentences.</p>
+                        <ol id="dynamic-sentence-list" style="margin-left: 20pt; padding-left: 20pt; list-style-type: decimal;">${listItemsHtml}</ol>
+                    </div>`;
+                document.getElementById('worksheetPreview').innerHTML += html;
+            }
+            sentencePool = []; renderSentencePool();
+        });
+
+        document.getElementById('printBtn').addEventListener('click', () => window.print());
+
+        // ==========================================
+        // TAB 3: PARAGRAPH SCRAMBLER (Standalone)
+        // ==========================================
+        document.getElementById('generateParaScrambleBtn').addEventListener('click', () => {
+            if (globalRawParagraphs.length === 0) return alert("Please generate text in the first tab first.");
+            
+            let paragraphs = [...globalRawParagraphs].sort(() => 0.5 - Math.random()); 
+            
+            let html = `
+                <div class="ws-header-container avoid-break">
+                    <h1 class="ws-main-title">Paragraph Sorting Activity</h1>
+                </div>
+                <div style="margin-bottom: 20pt;" class="avoid-break">
+                    <h2 class="ws-section-title" style="margin-top: 0;">🧩 Task: Logical Reconstruction</h2>
+                    <p style="font-style:italic; color:#333; font-size: 11pt;">Instructions: The original text has been broken down into separate paragraphs and shuffled. Please cut along the dashed lines, read carefully, and arrange the blocks into the correct logical sequence.</p>
+                </div>
+            `;
+            paragraphs.forEach(para => {
+                html += `<div class="ws-scramble-block avoid-break" style="font-size: 11pt; line-height: 1.6;">
+                            <span style="position:absolute; top:-8pt; left:15pt; background:white; padding:0 5pt; font-size:9pt; font-style:italic; color: #64748b;">✂️ Cut here</span>
+                            ${para}
+                         </div>`;
+            });
+            
+            document.getElementById('paraCanvasPreview').innerHTML = html;
+        });
+
+        document.getElementById('printParaBtn').addEventListener('click', () => window.print());
+
+
+        // ==========================================
+        // TAB 4: AI PROMPT MULTI-SELECT
+        // ==========================================
+        document.getElementById('generatePromptBtn').addEventListener('click', () => {
+            const textToUse = globalRawParagraphs.join('\n\n') || "[PLEASE INSERT YOUR READING PASSAGE HERE]";
+            const exam = document.getElementById('examStandard').value;
+            const count = document.getElementById('questionCount').value;
+            
+            const checkedBoxes = document.querySelectorAll('#questionTypesGroup input:checked');
+            if (checkedBoxes.length === 0) return alert("Please check at least one question type!");
+
+            let prompt = `Act as an expert ESL/EFL test developer and instructional designer. I am providing you with a reading passage. I need you to generate high-quality assessment questions based STRICTLY on the text provided.\n\n### TARGET EXAM STANDARD\nTest Format: ${exam}\n\n### TASK SPECIFICATIONS\nPlease generate the following ${checkedBoxes.length} sections of assessment. For each section, generate exactly ${count} questions.\n\n`;
+
+            checkedBoxes.forEach((box, index) => {
+                const task = box.value;
+                prompt += `**Section ${index + 1}:**\n`;
+                if (task === "MCQ") prompt += `- Format: Multiple Choice Questions (A, B, C, D).\n- Focus on Command of Evidence, Words in Context, and Author's Purpose.\n- Constraint: Ensure distractors are plausible but demonstrably incorrect based on the text.\n\n`;
+                else if (task === "IELTS_Summary") prompt += `- Format: IELTS Reading Summary Completion.\n- Action: Write a summary of the passage using paraphrased language.\n- Constraint: Leave blank spaces in the summary and provide a Word Bank with distractors.\n\n`;
+                else if (task === "TOEFL_Rewrite") prompt += `- Format: TOEFL Sentence Simplification.\n- Action: Select long, complex sentences from the text.\n- Constraint: Provide 4 options per question where incorrect choices change meaning or omit essential details.\n\n`;
+                else if (task === "Vocab_Context") prompt += `- Format: Vocabulary in Context Questions.\n- Action: Select B2/C1 level academic words from the text.\n- Constraint: Ask for the meaning of the word AS IT IS USED in the specific context of the paragraph, not just the dictionary definition.\n\n`;
+            });
+
+            prompt += `### OUTPUT FORMAT\nProvide all questions first, grouped by section. At the very end, provide a single "Answer Key" section with brief explanations for why the correct answer is right and why the distractors are wrong.\n\n### READING PASSAGE\n"""\n${textToUse}\n"""`;
+            document.getElementById('promptOutput').value = prompt;
+        });
+
+        document.getElementById('copyPromptBtn').addEventListener('click', () => {
+            const output = document.getElementById('promptOutput');
+            if (!output.value) return;
+            output.select();
+            document.execCommand('copy');
+            const btn = document.getElementById('copyPromptBtn');
+            btn.innerHTML = "✅ Copied!"; btn.classList.add('btn-success');
+            setTimeout(() => { btn.innerHTML = "📄 Copy to Clipboard"; btn.classList.remove('btn-success'); }, 2000);
+        });
+
+    </script>
+</body>
+</html>
